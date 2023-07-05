@@ -1,5 +1,6 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import personService from './services/person.js'
 
 const Filter = ({ filterName, handleFilterChange }) => {
   return (
@@ -29,24 +30,38 @@ const PersonForm = ({ newName, newNum, handleNameChange, handleNumChange, addNam
   );
 };
 
-const PersonsList = ({ persons }) => {
+const PersonsList = ({ persons, remove }) => {
   return (
     <div>
       <h2>Numbers</h2>
-      {persons.map((person, index) => (
-        <div key={index}>
-          {person.name} {person.number}
+      {persons.map((person) => (
+        <div key={person.id}>
+          {person.name} {person.number} 
+          <button onClick={() => remove(person.id)}>DELETE</button>
         </div>
       ))}
     </div>
   );
 };
 
+/*const AfterFilter = (props) => {
+  return(
+  <div>{props.afterFilter}</div>
+  )}
+*/
 const App = () => {
   const [persons, setPersons] = useState([{ name: '' }]);
   const [newName, setNewName] = useState('');
   const [newNum, setNewNum] = useState('');
   const [filterName, setFilterName] = useState('');
+
+  const dataHook = () => {
+    personService 
+      .getAll()
+      .then( initialData => setPersons(initialData))
+  }
+
+  useEffect(dataHook, [])
 
   const addName = (event) => {
     event.preventDefault();
@@ -56,16 +71,45 @@ const App = () => {
     };
 
     const checkName = persons.find((person) => person.name.toLowerCase() === newPersons.name.toLowerCase());
+    const changedPerson = { ...checkName, number:newNum}
 
-    if (JSON.stringify(newPersons) === JSON.stringify(checkName)) {
+    if (checkName && checkName.number === newPersons.number) {
       window.alert(`${newName} is already added to phonebook`);
-    } else {
-      setPersons(persons.concat(newPersons));
+    } else if(checkName && checkName.number !== newPersons.number){
+      if(window.confirm(`${newName} already in phonebook, do you want to change number`)) {
+      personService
+        .update(checkName.id, changedPerson)
+        .then(returnedPerson =>{
+          setPersons(persons.map(i => i.id !== checkName.id ? i : returnedPerson))
+        })
+        .catch(error => window.alert(error))
     }
+    } else {
+      personService
+        .create(newPersons)
+        .then( returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+        })
+        .catch(error => window.alert(error))
+      }
 
     setNewName('');
     setNewNum('');
   };
+
+ 
+const removePerson = (id) => {
+  const remove = persons.find((person) => person.id === id);
+  if (remove && window.confirm(`${remove.name} want to remove?`)) {
+    personService
+      .removePerson(id)
+      .then(() => {
+        setPersons(persons.filter((person) => person.id !== id));
+      })
+      .catch((error) => window.alert(error));
+  }
+};
+
 
   const handleNameChange = (event) => {
     setNewName(event.target.value);
@@ -80,7 +124,13 @@ const App = () => {
   };
 
   const filteredPersons = persons.filter((person) => person.name.toLowerCase().includes(filterName.toLowerCase()));
-
+/* const afterFilter = filteredPersons.map((person, index) => (
+  <div key={index}>
+    {person.name} {person.number}
+    <button onClick={() => removePerson(person.id)}>DELETE</button>
+  </div>
+));
+*/
   return (
     <div>
       <h2>Phonebook</h2>
@@ -92,9 +142,9 @@ const App = () => {
         handleNumChange={handleNumChange}
         addName={addName}
       />
-      <PersonsList persons={persons} />
+      <PersonsList persons={persons} remove={removePerson}/>
       <div>filter results</div>
-      <PersonsList persons={filteredPersons} />
+      <PersonsList persons ={filteredPersons} remove={removePerson} />
     </div>
   );
 };
