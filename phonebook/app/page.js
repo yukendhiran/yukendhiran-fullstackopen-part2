@@ -42,7 +42,19 @@ const PersonsList = ({ persons, remove }) => {
       ))}
     </div>
   );
-};
+}; 
+
+const Notification = ({ message }) => {
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className="border border-black-700 rounded-md bg-gray-400 p-2.5 my-2.5 border-solid border-2 text-lg ">
+      {message.toString()}
+    </div>
+  )
+}
 
 /*const AfterFilter = (props) => {
   return(
@@ -54,6 +66,7 @@ const App = () => {
   const [newName, setNewName] = useState('');
   const [newNum, setNewNum] = useState('');
   const [filterName, setFilterName] = useState('');
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const dataHook = () => {
     personService 
@@ -74,23 +87,38 @@ const App = () => {
     const changedPerson = { ...checkName, number:newNum}
 
     if (checkName && checkName.number === newPersons.number) {
-      window.alert(`${newName} is already added to phonebook`);
+      setErrorMessage(`${newName} is already added to phonebook`);
     } else if(checkName && checkName.number !== newPersons.number){
       if(window.confirm(`${newName} already in phonebook, do you want to change number`)) {
       personService
         .update(checkName.id, changedPerson)
         .then(returnedPerson =>{
           setPersons(persons.map(i => i.id !== checkName.id ? i : returnedPerson))
+          setTimeout(() => {
+              setErrorMessage(`number of ${newName} is changed`)
+            }, 5000)
         })
-        .catch(error => window.alert(error))
+         .catch(error => {
+          setErrorMessage(`Information of ${newName} has already been removed from server`);
+            setTimeout(() => {
+          setErrorMessage(null)
+        }, 5000)})
     }
     } else {
       personService
         .create(newPersons)
         .then( returnedPerson => {
           setPersons(persons.concat(returnedPerson))
+          setErrorMessage(`Successfully added ${newName}`)
+          setTimeout(() => {
+          setErrorMessage(null)
+        }, 5000)
         })
-        .catch(error => window.alert(error))
+        .catch(error => {
+          setErrorMessage(error)
+          setTimeout(() => {
+          setErrorMessage(null)
+        }, 5000)})
       }
 
     setNewName('');
@@ -133,7 +161,11 @@ const removePerson = (id) => {
 */
   return (
     <div>
-      <h2>Phonebook</h2>
+     
+      <h2 className="text-2xl">Phonebook</h2>
+     
+      <Notification message={errorMessage} />
+
       <Filter filterName={filterName} handleFilterChange={handleFilterChange} />
       <PersonForm
         newName={newName}
